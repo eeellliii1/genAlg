@@ -108,6 +108,8 @@ def load_models(file_path):
     models = []
     for file_name in file_names:
         models.append(tf.keras.models.load_model(file_path + "/" + file_name))
+        print("--------------------------------------------------")
+        print(type(models[-1]))
 
     return models
 
@@ -161,7 +163,7 @@ def play(player_one, player_two, columns, rows):
         options = current_player.predict(board)[0]
         ##if is_player_one:
             ##print(options)
-        ##print(options)
+        print(options)
 
         best_columns = []
         best_chance = -float('inf')
