@@ -5,6 +5,8 @@ import random
 import sys
 import heapq
 
+####
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import tensorflow as tf
 from tensorflow.keras import layers
@@ -21,7 +23,7 @@ from game import Connect_4
 # 4. Test on boards of dimensions other than training?
 
 
-# Splice net weights together and generate new generations
+# Splice net weights together and generate new generations #TODO NEEDS ADJUST TO BE MODULE AGNOSTIC
 def reproduce(parents, g):
     model = g.make_player().net # NEED TO ELIMINATE THIS just edit weights of the existing models
 
@@ -75,17 +77,15 @@ def reproduce(parents, g):
     return g.player(model)
 
 
-# Load all the models in the given file_path to a folder and return list of keras models
-def load_models(file_path):
+# Load all the models in the given file_path to a folder and return list of players who use 
+def load_models(file_path, g):
     file_names = os.listdir(file_path)
 
-    models = []
+    players = []
     for file_name in file_names:
-        models.append(tf.keras.models.load_model(file_path + "/" + file_name))
-        print("--------------------------------------------------")
-        print(type(models[-1]))
+        players.append(g.make_player(tf.keras.models.load_model(file_path + "/" + file_name)))
 
-    return models
+    return players
 
 
 # Pit random pairs of models against eachother returning only the ones who win
@@ -112,30 +112,6 @@ def tournament(players, g):
 
     return winners
 
-
-
-
-
-
-# Print out the board so humans can look at it
-def visualize_board(board, columns, rows):
-    print_str = ""
-
-    for i in range(1, rows + 1):
-        inv_row = rows - i
-        for col in range(columns):
-            char = '*'
-            if board[col][inv_row][0] == 1.0:
-                char = 'X'
-            elif board[col][inv_row][0] == -1.0:
-                    char = 'O'
-                
-            print_str += char + '  '
-
-        print_str += '\n'
-
-    print(print_str)
-
 #########################################
 
 args = sys.argv[1:]
@@ -146,21 +122,22 @@ args = sys.argv[1:]
 # Command Struct 3: best {load_dir} {top_how_many}
 #   finds the net with the best win rate against all other nets
 
+g = Connect_4() # NEEEEEEEEDS FIIIIIIIIIIIIIIX ###################################
 
 # Trains nets either new or loaded
 if args[0] == "train":
     num_players = 0 # Number of nets per generation
     generations = int(args[4]) 
 
-    g = Connect_4() # NEEEEEEEEDS FIIIIIIIIIIIIIIX ###################################
+    
 
     # Make brand new nets
     if args[1] == "new":
         num_players = int(args[5])
         players = [g.make_player() for i in range(num_players)]
     # Load previously generated nets
-    else: ### NOT IMPLEMENTED IN REFACTOR !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        players = load_models(args[2])
+    else: 
+        players = load_models(args[2], g)
         num_players = len(players)
 
     # Train the nets for {generations} generations
@@ -182,68 +159,75 @@ if args[0] == "train":
     for i in range(len(players)):
         players[i].save(args[3] + '/net' + str(i) + '.h5')
 
-# Lets you play against the model of your choice
+# Lets you play against the model of your choice 
 elif args[0] == "evaluate":
-    players = load_models(args[1])
+    players = load_models(args[1], g)
 
     usr_input = ""
     while(usr_input != "exit"):
 
-        usr_input = input("Choose a challenger: 0 ->" + str(len(players) - 1))
+        usr_input = input("Choose a challenger: 0 -> " + str(len(players) - 1))
         if usr_input == "exit":
             continue
 
         challenger = players[int(usr_input)] 
 
-        ai_turn = False
-        if random.uniform(0, 1) >= 0.5:
-            ai_turn = True
+        victor = g.evaluate(challenger)
 
-        board = np.array([np.array([0.0 for i in range(rows)]) for j in range(columns)]).reshape(1, columns, rows, 1)
-        visualize_board(board[0], columns, rows)
-
-        game_over = False
-
-        # Play a game against the loaded model
-        while(not game_over):
-            move = 0
-
-            if ai_turn:
-                print("AI Turn:")
-        
-                options = challenger.predict(board)[0]
-                best_columns = []
-                best_chance = -float('inf')
-                for i in range(len(options)):
-                    if options[i] > best_chance:
-                        best_columns = [i]
-                        best_chance = options[i]
-                    elif options[i] >= best_chance:
-                        best_columns.append(i)
-
-                move = np.random.choice(best_columns)
-                print(move)
-            else:
-                move = int(input("Your Turn:\nEnter your move (leftmost column is 0)\n"))
-
-            valid_move_check, board = make_move(board, move, not ai_turn)
-
-            visualize_board(board[0], columns, rows)
-
-            game_over, win_num = check_game_over(board[0])
-
-            ai_turn = not ai_turn
-
-        if win_num == 1:
+        if victor == challenger:
             print("Better luck next time...")
-        elif win_num == -1:
-            print("Congrats!")
         else:
-            print("A ... tie?")
+            print("Congrats!")
+
+        # ai_turn = False
+        # if random.uniform(0, 1) >= 0.5:
+        #     ai_turn = True
+
+        # board = np.array([np.array([0.0 for i in range(rows)]) for j in range(columns)]).reshape(1, columns, rows, 1)
+        # visualize_board(board[0], columns, rows)
+
+        # game_over = False
+
+        # # Play a game against the loaded model
+        # while(not game_over):
+        #     move = 0
+
+        #     if ai_turn:
+        #         print("AI Turn:")
+        
+        #         options = challenger.predict(board)[0]
+        #         best_columns = []
+        #         best_chance = -float('inf')
+        #         for i in range(len(options)):
+        #             if options[i] > best_chance:
+        #                 best_columns = [i]
+        #                 best_chance = options[i]
+        #             elif options[i] >= best_chance:
+        #                 best_columns.append(i)
+
+        #         move = np.random.choice(best_columns)
+        #         print(move)
+        #     else:
+        #         move = int(input("Your Turn:\nEnter your move (leftmost column is 0)\n"))
+
+        #     valid_move_check, board = make_move(board, move, not ai_turn)
+
+        #     visualize_board(board[0], columns, rows)
+
+        #     game_over, win_num = check_game_over(board[0])
+
+        #     ai_turn = not ai_turn
+
+        # if win_num == 1:
+        #     print("Better luck next time...")
+        # elif win_num == -1:
+        #     print("Congrats!")
+        # else:
+        #     print("A ... tie?")
 
 # Calculate the model with the highest winrate against all the other models (very slow)
-else:
-    players = load_models(args[1])
+elif args[0] == "best": 
+    players = load_models(args[1], g)
     top_x = int(args[2])
 
     stats = []
@@ -262,7 +246,7 @@ else:
                     p1 = players[j]
                     p2 = players[i]
 
-                winner = play(p1, p2, columns, rows)
+                winner = g.play(p1, p2)
 
                 if winner is players[i]:
                     wr += 1

@@ -47,7 +47,7 @@ class Connect_4(Game):
     rows = 7
     columns = 6
 
-    def play(self, player_one, player_two):
+    def play(self, player_one, player_two, verbose = 0):
         # Make an empty board
         board = np.array([np.array([0.0 for i in range(self.rows)]) for j in range(self.columns)]).reshape(1, self.columns, self.rows, 1)
 
@@ -69,8 +69,8 @@ class Connect_4(Game):
             if not valid_move_check:
                 return other_player
             
-            # if watching:
-            #     visualize_board(board[0], columns, rows, player_one)
+            if verbose == 1:
+                self.visualize_board(board[0], current_player == player_one)
 
 
             #     if is_player_one:
@@ -169,12 +169,15 @@ class Connect_4(Game):
         return False, board
 
     def evaluate(self, p):
-        return self.play(p, Connect_4_Human())
+        return self.play(p, Connect_4_Human(), 1)
 
     def play_versus(self):
         return self.play(Connect_4_Human(), Connect_4_Human())
 
-    def make_player(self):
+    def make_player(self, net = None):
+        if not net is None:
+            return Connect_4_Player(net)
+
         # Set hyper params
         filter_dim = 2
         drop_prob = 0.5
@@ -202,3 +205,31 @@ class Connect_4(Game):
         model.add(layers.Dense(self.columns, activation = 'softmax'))
 
         return Connect_4_Player(model)
+
+    # Print out the board so humans can look at it
+    def visualize_board(self, board, player_one):
+        
+
+        print_str = ""
+
+        for i in range(1, self.rows + 1):
+            inv_row = self.rows - i
+            for col in range(self.columns):
+                char = '*'
+                if board[col][inv_row][0] == 1.0:
+                    if player_one:
+                        char = 'X'
+                    else:
+                        char = 'O'
+                elif board[col][inv_row][0] == -1.0:
+                    if not player_one:
+                        char = 'X'
+                    else:
+                        char = 'O'
+                    
+                print_str += char + '  '
+
+            print_str += '\n'
+
+        print(print_str)
+        

@@ -43,7 +43,7 @@ class Connect_4_Player(Player):
 class Connect_4_Human(Player):
     """A human for connect 4"""
 
-    def pick_move(board):
+    def pick_move(self, board):
         return int(input("What Col?"))
 
     
