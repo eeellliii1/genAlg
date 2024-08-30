@@ -14,7 +14,11 @@ from tensorflow.keras.models import Sequential
 
 ####
 
+# Import games
 from game import Connect_4
+
+# List of avaialable games 
+games = [Connect_4] #TODO find way to have this happen through code?
 
 # TODO 
 # 1. Individual weight adjustment
@@ -23,7 +27,7 @@ from game import Connect_4
 # 4. Test on boards of dimensions other than training?
 
 
-# Splice net weights together and generate new generations #TODO NEEDS ADJUST TO BE MODULE AGNOSTIC
+# Splice net weights together and generate new generations
 def reproduce(parents, g):
     model = g.make_player().net # NEED TO ELIMINATE THIS just edit weights of the existing models
 
@@ -36,8 +40,10 @@ def reproduce(parents, g):
 
     par_nets = [p.net for p in pars]
 
-    # Mutate value for multiplying weights by mutate_val -> 1 + mutate_val
+    # Mutate value for making the upper and lower bound of mutation (% of 1)
     mutate_val = 0.5
+    # Chance of mutation (% of 1)
+    mutate_cha = 0.5
 
     # Get the parent model layers
     layers = model.layers
@@ -59,16 +65,16 @@ def reproduce(parents, g):
             p1_layer_weights[j]
             p2_layer_weights[j]
 
-            choice = np.random.choice([0, 1, 2])
+            choice = random.randint(0, 4)
             if choice == 0:
-                layer_weights[j] = p1_layer_weights[j]
+                layer_weights[j] = p1_layer_weights[j] # Inherit from parent 1
             elif choice == 1:
-                layer_weights[j] = p2_layer_weights[j]
+                layer_weights[j] = p2_layer_weights[j] # Inherit from parent 2
             else:
-                layer_weights[j] = (p1_layer_weights[j] + p2_layer_weights[j]) / 2
+                layer_weights[j] = (p1_layer_weights[j] + p2_layer_weights[j]) / 2 # Average of both
 
-            if random.uniform(0, 1) >= 0.5:
-                mut_v = random.uniform(mutate_val, mutate_val + 1)
+            if random.uniform(0, 1) <= mutate_cha:
+                mut_v = random.uniform(abs(1 - mutate_val), mutate_val + 1)
                 layer_weights[j] *= mut_v
 
         # Set the weights
@@ -83,7 +89,7 @@ def load_models(file_path, g):
 
     players = []
     for file_name in file_names:
-        players.append(g.make_player(tf.keras.models.load_model(file_path + "/" + file_name)))
+        players.append(g.make_player(tf.keras.models.load_model(file_path + "/" + file_name, compile = False)))
 
     return players
 
@@ -122,14 +128,12 @@ args = sys.argv[1:]
 # Command Struct 3: best {load_dir} {top_how_many}
 #   finds the net with the best win rate against all other nets
 
-g = Connect_4() # NEEEEEEEEDS FIIIIIIIIIIIIIIX ###################################
+g = Connect_4() 
 
 # Trains nets either new or loaded
 if args[0] == "train":
     num_players = 0 # Number of nets per generation
     generations = int(args[4]) 
-
-    
 
     # Make brand new nets
     if args[1] == "new":
@@ -144,20 +148,19 @@ if args[0] == "train":
     for i in range(generations):
         print("Generation:", i + 1)
 
-        # Play through two halvings of the population (needs changing so input does not need to be a multiple of 4)
+        # Play through two halvings of the population (needs changing so input does not need to be a multiple of 2?)
         winners = tournament(players, g)
-        winners_winners = tournament(winners, g)
 
-        players = [reproduce(winners_winners, g) for i in range(num_players)]
+        players = [reproduce(winners, g) for i in range(num_players)]
 
         # Every x generations save the models
         x = 60
         if (i + 1) % x == 0:
             for i in range(len(players)):
-                players[i].save(args[3] + '/net' + str(i) + '.h5')
+                players[i].save(args[3] + '/net' + str(i) + '.h5') #TODO double check, this does overwrite any existing nets up to the number of nets present
 
     for i in range(len(players)):
-        players[i].save(args[3] + '/net' + str(i) + '.h5')
+        players[i].save(args[3] + '/net' + str(i) + '.h5') #TODO double check, this does overwrite any existing nets up to the number of nets present
 
 # Lets you play against the model of your choice 
 elif args[0] == "evaluate":
@@ -166,7 +169,7 @@ elif args[0] == "evaluate":
     usr_input = ""
     while(usr_input != "exit"):
 
-        usr_input = input("Choose a challenger: 0 -> " + str(len(players) - 1))
+        usr_input = input("Choose a challenger: 0 -> " + str(len(players) - 1) + ":\n")
         if usr_input == "exit":
             continue
 
@@ -226,6 +229,7 @@ elif args[0] == "evaluate":
         #     print("A ... tie?")
 
 # Calculate the model with the highest winrate against all the other models (very slow)
+# 
 elif args[0] == "best": 
     players = load_models(args[1], g)
     top_x = int(args[2])
@@ -233,7 +237,7 @@ elif args[0] == "best":
     stats = []
 
     for i in range(len(players)):
-        print("Evaluating plyaer", i)
+        print("Evaluating player", i)
 
         wr = 0.0
 
@@ -256,5 +260,5 @@ elif args[0] == "best":
     top = heapq.nlargest(top_x, stats)
 
     for i in range(len(top)):
-        print(str(i + 1) + ": Net", top[i])
+        print(str(i + 1) + ": Net", top[i][1], "with win-rate", top[i][0])
 
