@@ -2,7 +2,7 @@ Purpose:
 -Make a framework for generating and evaluating genetic algorithms against simple adversarial games
 
 Reqs:
--
+-TBD
 
 Command Format:
 -Command Struct 1: train {new/old} {load_dir} {save_dir} {generations} {(not needed if old) num_players}
